@@ -1,0 +1,941 @@
+/* ───────────────────────────────────────────
+   Sall Wedding — Shot List
+   Mobile-first, dark UI for outdoor readability
+   ─────────────────────────────────────────── */
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-hover: #242424;
+  --border: #2a2a2a;
+  --text: #f0f0f0;
+  --text-muted: #888;
+  --accent: #c9a84c;
+  --accent-dim: #8a6d2b;
+  --green: #4caf50;
+  --green-dim: #1b3a1c;
+  --red: #e57373;
+  --tag-photo: #5b8dd9;
+  --tag-video: #d95b8d;
+  --tag-both: #9b59b6;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Header ── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 16px max(20px, calc((100% - 600px) / 2 + 20px));
+}
+
+.header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.header-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.progress-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.progress-bar-bg {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ── Back button ── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+/* ── View toggle ── */
+.view-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.view-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+/* ── Location List ── */
+.locations {
+  padding: 12px 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.location-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.location-card:active {
+  background: var(--surface-hover);
+}
+
+.location-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.location-info { flex: 1; }
+
+.location-name {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.location-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.location-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.location-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.location-progress-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.location-progress-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.location-arrow {
+  color: var(--text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.empty-locations {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── Content container ── */
+.shot-list,
+.shot-grid-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Shot List (list view) ── */
+.shot-list {
+  padding: 12px 16px;
+}
+
+.shot-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 8px 4px 6px;
+}
+
+.shot-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: opacity 0.3s;
+}
+
+.shot-card.completed {
+  opacity: 0.45;
+}
+
+.shot-card.completed .shot-description {
+  text-decoration: line-through;
+}
+
+.shot-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.shot-checkbox {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: all 0.15s;
+}
+
+.shot-card.completed .shot-checkbox {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.shot-checkbox svg {
+  width: 14px;
+  height: 14px;
+  stroke: white;
+  stroke-width: 3;
+  fill: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.shot-card.completed .shot-checkbox svg {
+  opacity: 1;
+}
+
+.shot-body { flex: 1; min-width: 0; }
+
+.shot-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.shot-description {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.shot-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.shot-tag {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.shot-tag.photo { background: var(--tag-photo); color: #fff; }
+.shot-tag.video { background: var(--tag-video); color: #fff; }
+.shot-tag.both  { background: var(--tag-both);  color: #fff; }
+
+.shot-tag.must-have {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+}
+
+.shot-tag.nice-to-have {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.shot-description-input,
+.shot-notes-input {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
+  font-family: inherit;
+  padding: 2px 0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.shot-description-input {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.shot-notes-input {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.shot-description-input:focus,
+.shot-notes-input:focus {
+  border-bottom-color: var(--accent);
+}
+
+.shot-description-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.shot-notes-input::placeholder {
+  color: var(--border);
+}
+
+.carousel-input {
+  font-size: 12px !important;
+}
+
+.carousel-input.shot-description-input {
+  font-size: 13px !important;
+}
+
+.carousel-slide-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.shot-notes {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* ── Reference image (list view) ── */
+.shot-ref {
+  width: 100%;
+}
+
+.shot-ref img {
+  width: 100%;
+  display: block;
+  max-height: 500px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 0 0 12px 12px;
+}
+
+/* ── Grid view ── */
+.shot-grid-container {
+  padding: 8px 12px;
+}
+
+.shot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.grid-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface);
+  transition: opacity 0.3s;
+}
+
+.grid-card.completed {
+  opacity: 0.5;
+}
+
+.grid-img {
+  position: relative;
+  aspect-ratio: 1;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.grid-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid-no-img {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  background: var(--surface);
+}
+
+.grid-number {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.grid-stack-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.grid-edit-link {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+  padding: 2px 4px;
+}
+
+.grid-edit-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-group-tile {
+  outline: 2px dashed var(--accent-dim);
+  outline-offset: -2px;
+}
+
+.grid-group-label {
+  font-weight: 600;
+  color: var(--text) !important;
+}
+
+.grid-group-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.grid-check-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-check-overlay svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--green);
+  stroke-width: 3;
+  fill: none;
+}
+
+.grid-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  min-height: 34px;
+}
+
+.grid-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.grid-checkbox.checked {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.grid-checkbox svg {
+  width: 10px;
+  height: 10px;
+  stroke: white;
+  stroke-width: 3;
+  fill: none;
+  opacity: 0;
+}
+
+.grid-checkbox.checked svg {
+  opacity: 1;
+}
+
+.grid-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Edit mode ── */
+.header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.active-toggle {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+}
+
+.edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.edit-bar-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.edit-bar-btn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.edit-bar-btn-danger {
+  background: transparent !important;
+  color: var(--red) !important;
+  border: 1px solid var(--red) !important;
+}
+
+.edit-bar-btn-dim {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+/* Selected state */
+.grid-card.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.shot-card.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.grid-select-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(201, 168, 76, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-select-overlay svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--accent);
+  stroke-width: 3;
+  fill: none;
+}
+
+.shot-select-checkbox {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dim);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: all 0.15s;
+}
+
+.shot-select-checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.shot-select-checkbox svg {
+  width: 14px;
+  height: 14px;
+  stroke: #000;
+  stroke-width: 3;
+  fill: none;
+  opacity: 0;
+}
+
+.shot-select-checkbox.checked svg {
+  opacity: 1;
+}
+
+.shot-tag.has-group {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.shot-tag.no-group {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.group-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-rename-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ── Group headers ── */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-arrow {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  transition: transform 0.2s;
+  display: inline-block;
+  transform: rotate(90deg);
+}
+
+.group-arrow.collapsed {
+  transform: rotate(0deg);
+}
+
+.group-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.group-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+/* ── Carousel (grouped shots in feed) ── */
+.carousel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+}
+
+.carousel-group-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.carousel-group-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  position: relative;
+}
+
+.carousel-slide img {
+  width: 100%;
+  display: block;
+  max-height: 500px;
+  object-fit: contain;
+  background: #000;
+}
+
+.carousel-slide-info {
+  padding: 8px 14px 4px;
+}
+
+.carousel-slide-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.carousel-slide-top .shot-checkbox {
+  width: 24px;
+  height: 24px;
+}
+
+.carousel-slide-top .completed-cb {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.carousel-slide-top .completed-cb svg {
+  opacity: 1;
+}
+
+.carousel-slide-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 0 12px;
+}
+
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+.carousel-dot.active {
+  background: var(--accent);
+}
+
+/* ── Move mode ── */
+.move-source {
+  opacity: 0.4;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.move-target {
+  cursor: pointer;
+}
+
+.move-target::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px dashed var(--accent-dim);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.move-bar {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent) !important;
+}
+
+.move-bar .edit-bar-label {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* ── Empty state ── */
+.empty-shots {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.empty-shots code {
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* ── Reset button ── */
+.reset-section {
+  padding: 20px 16px 40px;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.reset-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.restore-btn {
+  margin-top: 8px;
+  color: var(--accent) !important;
+  border-color: var(--accent-dim) !important;
+}
+
+.reset-btn:active {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+/* ── Responsive: on mobile default to list ── */
+@media (max-width: 480px) {
+  .shot-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+}
