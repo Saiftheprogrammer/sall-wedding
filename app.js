@@ -69,7 +69,7 @@ const $ = (sel) => document.querySelector(sel);
 // ─── Supabase state persistence ─────────────────────
 async function loadState(key) {
   const { data } = await sb.from("app_state").select("value").eq("key", key).maybeSingle();
-  return data ? data.value : {};
+  return data ? data.value : null;
 }
 
 async function saveState(key, value) {
