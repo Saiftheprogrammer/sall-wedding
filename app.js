@@ -3,13 +3,55 @@ const SUPABASE_URL = "https://gltvxluqxxppvygrevwg.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsdHZ4bHVxeHhwcHZ5Z3JldndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NzExNjcsImV4cCI6MjA5MjU0NzE2N30.8XM4gEOtKpwgfXqD_9VS3MwyiyiJeGRqSI9shVdx7KY";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ─── Auth ────────────────────────────────────────────
+const PASSWORDS = { edit: "waha", view: "SalieuAissatou" };
+let userRole = localStorage.getItem("sall-role") || null; // "edit" or "view"
+
+function canEdit() { return userRole === "edit"; }
+
+function showLoginScreen() {
+  const app = document.querySelector("#app");
+  app.innerHTML = `
+    <div class="login-screen">
+      <h1>Sall Wedding</h1>
+      <p class="login-sub">Shot List — Photography & Videography</p>
+      <input type="password" id="login-pw" class="login-input" placeholder="Enter password" autofocus>
+      <button class="login-btn" onclick="attemptLogin()">Enter</button>
+      <div id="login-error" class="login-error"></div>
+    </div>
+  `;
+  document.getElementById("login-pw").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") attemptLogin();
+  });
+}
+
+function attemptLogin() {
+  const pw = document.getElementById("login-pw").value;
+  if (pw === PASSWORDS.edit) {
+    userRole = "edit";
+  } else if (pw === PASSWORDS.view) {
+    userRole = "view";
+  } else {
+    document.getElementById("login-error").textContent = "Incorrect password";
+    return;
+  }
+  localStorage.setItem("sall-role", userRole);
+  initApp();
+}
+
+function logout() {
+  userRole = null;
+  localStorage.removeItem("sall-role");
+  showLoginScreen();
+}
+
 // ─── State ───────────────────────────────────────────
 let completedShots = {};
 let groupOverrides = {};
 let hiddenShots = {};
 let descOverrides = {};
 let orderOverrides = {};
-let uploadedShots = {}; // { locId: [{ id, location_id, file_path }] }
+let uploadedShots = {};
 let collapsedGroups = JSON.parse(localStorage.getItem("sall-collapsed") || "{}");
 let viewMode = localStorage.getItem("sall-view") || "grid";
 let currentLocation = null;
@@ -217,7 +259,12 @@ function renderLocations() {
 
   let html = `
     <div class="header">
-      <h1>Sall Wedding</h1>
+      <div class="header-top-row">
+        <h1>Sall Wedding</h1>
+        <button class="view-toggle" onclick="logout()" title="Logout">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
       <div class="header-sub">Shot List — Photography & Videography</div>
       ${stats.total > 0 ? `
         <div class="progress-summary">
@@ -270,8 +317,8 @@ function renderShots(loc) {
       <div class="header-top-row">
         <button class="back-btn" onclick="goBack()">← Back</button>
         <div class="header-actions">
-          <button class="view-toggle" onclick="triggerUpload()" title="Add photos">${addIcon}</button>
-          <button class="view-toggle ${editMode ? 'active-toggle' : ''}" onclick="toggleEditMode()" title="Edit groups">${editIcon}</button>
+          ${canEdit() ? `<button class="view-toggle" onclick="triggerUpload()" title="Add photos">${addIcon}</button>` : ""}
+          ${canEdit() ? `<button class="view-toggle ${editMode ? 'active-toggle' : ''}" onclick="toggleEditMode()" title="Edit groups">${editIcon}</button>` : ""}
           <button class="view-toggle" onclick="toggleView()" title="Switch view">
             ${viewMode === "grid" ? listIcon : gridIcon}
           </button>
@@ -465,16 +512,20 @@ function renderFeedCard(shot, loc) {
     `;
   }
 
+  const ro = !canEdit() ? "readonly" : "";
+
   return `
     <div class="shot-card ${done ? 'completed' : ''}" id="shot-${shot.id}">
       <div class="shot-top">
-        <div class="shot-checkbox" onclick="toggle('${escapedId}')">
-          <svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>
-        </div>
+        ${canEdit() ? `
+          <div class="shot-checkbox" onclick="toggle('${escapedId}')">
+            <svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>
+          </div>
+        ` : ""}
         <div class="shot-body">
           <div class="shot-number">#${shotIndex}</div>
-          <input class="shot-description-input" type="text" value="${desc.replace(/"/g, '&quot;')}" placeholder="Add description..." onchange="saveField('${escapedId}', 'description', this.value)" onclick="event.stopPropagation()">
-          <input class="shot-notes-input" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="Add notes for photographer..." onchange="saveField('${escapedId}', 'notes', this.value)" onclick="event.stopPropagation()">
+          <input class="shot-description-input" type="text" value="${desc.replace(/"/g, '&quot;')}" placeholder="${canEdit() ? 'Add description...' : ''}" ${ro} onchange="saveField('${escapedId}', 'description', this.value)" onclick="event.stopPropagation()">
+          ${(notes || canEdit()) ? `<input class="shot-notes-input" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="${canEdit() ? 'Add notes for photographer...' : ''}" ${ro} onchange="saveField('${escapedId}', 'notes', this.value)" onclick="event.stopPropagation()">` : ""}
         </div>
       </div>
       ${imgSrc ? `<div class="shot-ref"><img src="${imgSrc}" loading="lazy" alt="${displayName}"></div>` : ""}
@@ -500,17 +551,20 @@ function renderCarouselCard(group, loc) {
     const displayName = desc || `Shot ${shotIndex}`;
     const escapedId = shot.id.replace(/'/g, "\\'");
 
+    const cRo = !canEdit() ? "readonly" : "";
     slides += `
       <div class="carousel-slide" data-index="${i}">
         ${imgSrc ? `<img src="${imgSrc}" loading="lazy" alt="${displayName}">` : `<div class="grid-no-img">${displayName}</div>`}
         <div class="carousel-slide-info">
           <div class="carousel-slide-top">
-            <div class="shot-checkbox ${done ? 'completed-cb' : ''}" onclick="toggle('${escapedId}')">
-              <svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>
-            </div>
+            ${canEdit() ? `
+              <div class="shot-checkbox ${done ? 'completed-cb' : ''}" onclick="toggle('${escapedId}')">
+                <svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>
+              </div>
+            ` : ""}
             <div class="carousel-slide-fields">
-              <input class="shot-description-input carousel-input" type="text" value="${desc.replace(/"/g, '&quot;')}" placeholder="Add description..." onchange="saveField('${escapedId}', 'description', this.value)">
-              <input class="shot-notes-input carousel-input" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="Notes..." onchange="saveField('${escapedId}', 'notes', this.value)">
+              <input class="shot-description-input carousel-input" type="text" value="${desc.replace(/"/g, '&quot;')}" placeholder="${canEdit() ? 'Add description...' : ''}" ${cRo} onchange="saveField('${escapedId}', 'description', this.value)">
+              ${(notes || canEdit()) ? `<input class="shot-notes-input carousel-input" type="text" value="${notes.replace(/"/g, '&quot;')}" placeholder="${canEdit() ? 'Notes...' : ''}" ${cRo} onchange="saveField('${escapedId}', 'notes', this.value)">` : ""}
             </div>
           </div>
         </div>
@@ -924,13 +978,20 @@ window.addEventListener("popstate", () => {
 });
 
 // ─── Init ────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
+async function initApp() {
   await loadAllState();
-
   const hash = window.location.hash.replace("#", "");
   if (hash) {
     const loc = LOCATIONS.find((l) => l.id === hash);
     if (loc) { currentLocation = loc; renderShots(loc); return; }
   }
   renderLocations();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (userRole) {
+    initApp();
+  } else {
+    showLoginScreen();
+  }
 });
