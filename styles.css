@@ -948,6 +948,42 @@ body {
   min-height: 20px;
 }
 
+/* ── Location edit mode ── */
+.loc-edit-card {
+  cursor: default !important;
+}
+
+.loc-edit-card:active {
+  background: var(--surface) !important;
+}
+
+.loc-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.loc-edit-btn {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.loc-edit-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.loc-delete-btn {
+  color: var(--red) !important;
+  border-color: var(--red) !important;
+}
+
 /* ── Upload toast ── */
 .upload-toast {
   position: fixed;

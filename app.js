@@ -52,6 +52,9 @@ let hiddenShots = {};
 let descOverrides = {};
 let orderOverrides = {};
 let uploadedShots = {};
+let customLocations = []; // user-created locations stored in Supabase
+let locationOverrides = {}; // { locId: { name, description, icon } } for renaming
+let locationOrder = []; // ordered array of location IDs
 let collapsedGroups = JSON.parse(localStorage.getItem("sall-collapsed") || "{}");
 let viewMode = localStorage.getItem("sall-view") || "grid";
 let currentLocation = null;
@@ -74,18 +77,24 @@ async function saveState(key, value) {
 }
 
 async function loadAllState() {
-  const [c, g, h, d, o] = await Promise.all([
+  const [c, g, h, d, o, cl, lo, locOrd] = await Promise.all([
     loadState("completed"),
     loadState("groups"),
     loadState("hidden"),
     loadState("descriptions"),
-    loadState("order")
+    loadState("order"),
+    loadState("custom_locations"),
+    loadState("location_overrides"),
+    loadState("location_order")
   ]);
   completedShots = c || {};
   groupOverrides = g || {};
   hiddenShots = h || {};
   descOverrides = d || {};
   orderOverrides = o || {};
+  customLocations = cl || [];
+  locationOverrides = lo || {};
+  locationOrder = locOrd || [];
 
   // Load uploaded photos from DB
   const { data: uploads } = await sb.from("uploaded_photos").select("*");
@@ -242,8 +251,118 @@ function getShotIndex(shot, loc) {
 
 function totalStats() {
   let total = 0, done = 0;
-  LOCATIONS.forEach((loc) => { const s = locationStats(loc); total += s.total; done += s.done; });
+  getAllLocations().forEach((loc) => { const s = locationStats(loc); total += s.total; done += s.done; });
   return { total, done };
+}
+
+// ─── Location management ────────────────────────────
+function saveCustomLocations() { debouncedSave("custom_locations", customLocations, 100); }
+function saveLocationOverrides() { debouncedSave("location_overrides", locationOverrides, 100); }
+function saveLocationOrder() { debouncedSave("location_order", locationOrder, 100); }
+
+function getAllLocations() {
+  // Merge built-in LOCATIONS with custom ones
+  const builtIn = LOCATIONS.map((loc) => {
+    const ov = locationOverrides[loc.id];
+    if (ov) return { ...loc, name: ov.name || loc.name, description: ov.description || loc.description, icon: ov.icon || loc.icon };
+    return loc;
+  });
+  const custom = customLocations.map((loc) => {
+    const ov = locationOverrides[loc.id];
+    if (ov) return { ...loc, name: ov.name || loc.name, description: ov.description || loc.description, icon: ov.icon || loc.icon };
+    return loc;
+  });
+  const all = [...builtIn, ...custom];
+
+  if (locationOrder.length === 0) return all;
+  const orderMap = {};
+  locationOrder.forEach((id, i) => { orderMap[id] = i; });
+  return all.sort((a, b) => {
+    const ai = orderMap[a.id] !== undefined ? orderMap[a.id] : 99999;
+    const bi = orderMap[b.id] !== undefined ? orderMap[b.id] : 99999;
+    return ai - bi;
+  });
+}
+
+function addLocation() {
+  const name = prompt("Location name:");
+  if (!name || !name.trim()) return;
+  const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  customLocations.push({
+    id, name: name.trim(), icon: "📍", description: "",
+    folder: `photos/${id}`, shots: []
+  });
+  saveCustomLocations();
+  renderLocations();
+}
+
+function renameLocation(locId) {
+  const locs = getAllLocations();
+  const loc = locs.find((l) => l.id === locId);
+  if (!loc) return;
+  const newName = prompt("Rename location:", loc.name);
+  if (newName === null || !newName.trim() || newName.trim() === loc.name) return;
+  if (!locationOverrides[locId]) locationOverrides[locId] = {};
+  locationOverrides[locId].name = newName.trim();
+  saveLocationOverrides();
+  renderLocations();
+}
+
+function changeLocationIcon(locId) {
+  const icons = ["📍","🏠","🌿","💒","🕌","🏡","⛪","🏖️","🌅","🎪","🏰","🌸","🌳","🍽️","💃","🎶"];
+  const loc = getAllLocations().find((l) => l.id === locId);
+  if (!loc) return;
+  const pick = prompt("Pick an emoji icon:\n\n" + icons.join("  ") + "\n\nOr type your own:", loc.icon);
+  if (pick === null || !pick.trim()) return;
+  if (!locationOverrides[locId]) locationOverrides[locId] = {};
+  locationOverrides[locId].icon = pick.trim();
+  saveLocationOverrides();
+  renderLocations();
+}
+
+let locEditMode = false;
+let selectedLocId = null;
+
+function toggleLocEditMode() {
+  locEditMode = !locEditMode;
+  selectedLocId = null;
+  renderLocations();
+}
+
+function selectLocation(locId) {
+  selectedLocId = selectedLocId === locId ? null : locId;
+  renderLocations();
+}
+
+function moveLocationUp(locId) {
+  const locs = getAllLocations();
+  if (locationOrder.length === 0) locationOrder = locs.map((l) => l.id);
+  const idx = locationOrder.indexOf(locId);
+  if (idx <= 0) return;
+  [locationOrder[idx - 1], locationOrder[idx]] = [locationOrder[idx], locationOrder[idx - 1]];
+  saveLocationOrder();
+  renderLocations();
+}
+
+function moveLocationDown(locId) {
+  const locs = getAllLocations();
+  if (locationOrder.length === 0) locationOrder = locs.map((l) => l.id);
+  const idx = locationOrder.indexOf(locId);
+  if (idx === -1 || idx >= locationOrder.length - 1) return;
+  [locationOrder[idx], locationOrder[idx + 1]] = [locationOrder[idx + 1], locationOrder[idx]];
+  saveLocationOrder();
+  renderLocations();
+}
+
+function deleteLocation(locId) {
+  // Only allow deleting custom locations
+  const isCustom = customLocations.some((l) => l.id === locId);
+  if (!isCustom) { alert("Can't delete built-in locations"); return; }
+  if (!confirm("Delete this location and all its photos?")) return;
+  customLocations = customLocations.filter((l) => l.id !== locId);
+  saveCustomLocations();
+  locEditMode = false;
+  renderLocations();
 }
 
 // ─── Icons ───────────────────────────────────────────
@@ -257,14 +376,21 @@ const addIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" str
 function renderLocations() {
   const app = $("#app");
   const stats = totalStats();
+  const locs = getAllLocations();
 
   let html = `
     <div class="header">
       <div class="header-top-row">
         <h1>Sall Wedding</h1>
-        <button class="view-toggle" onclick="logout()" title="Logout">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </button>
+        <div class="header-actions">
+          ${canEdit() ? `
+            <button class="view-toggle" onclick="addLocation()" title="Add location">${addIcon}</button>
+            <button class="view-toggle ${locEditMode ? 'active-toggle' : ''}" onclick="toggleLocEditMode()" title="Edit locations">${editIcon}</button>
+          ` : ""}
+          <button class="view-toggle" onclick="logout()" title="Logout">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
       </div>
       <div class="header-sub">Shot List — Photography & Videography</div>
       ${stats.total > 0 ? `
@@ -278,28 +404,47 @@ function renderLocations() {
     <div class="locations">
   `;
 
-  LOCATIONS.forEach((loc) => {
+  locs.forEach((loc, i) => {
     const s = locationStats(loc);
-    html += `
-      <div class="location-card" onclick="openLocation('${loc.id}')">
-        <div class="location-icon">${loc.icon}</div>
-        <div class="location-info">
-          <div class="location-name">${loc.name}</div>
-          <div class="location-desc">${loc.description}</div>
-          ${s.total > 0 ? `
-            <div class="location-progress">
-              <div class="location-progress-bar"><div class="location-progress-fill" style="width:${s.done/s.total*100}%"></div></div>
-              <div class="location-progress-text">${s.done}/${s.total}</div>
+
+    if (locEditMode) {
+      const isCustom = customLocations.some((l) => l.id === loc.id);
+      html += `
+        <div class="location-card loc-edit-card">
+          <div class="location-icon" onclick="changeLocationIcon('${loc.id}')" style="cursor:pointer">${loc.icon}</div>
+          <div class="location-info">
+            <div class="location-name">${loc.name}</div>
+            <div class="loc-edit-actions">
+              <button class="loc-edit-btn" onclick="renameLocation('${loc.id}')">Rename</button>
+              <button class="loc-edit-btn" onclick="moveLocationUp('${loc.id}')" ${i === 0 ? 'disabled' : ''}>▲</button>
+              <button class="loc-edit-btn" onclick="moveLocationDown('${loc.id}')" ${i === locs.length - 1 ? 'disabled' : ''}>▼</button>
+              ${isCustom ? `<button class="loc-edit-btn loc-delete-btn" onclick="deleteLocation('${loc.id}')">Delete</button>` : ""}
             </div>
-          ` : `<div class="location-progress-text" style="margin-top:6px;font-size:12px;color:var(--text-muted)">No shots added yet</div>`}
+          </div>
         </div>
-        <div class="location-arrow">›</div>
-      </div>
-    `;
+      `;
+    } else {
+      html += `
+        <div class="location-card" onclick="openLocation('${loc.id}')">
+          <div class="location-icon">${loc.icon}</div>
+          <div class="location-info">
+            <div class="location-name">${loc.name}</div>
+            <div class="location-desc">${loc.description}</div>
+            ${s.total > 0 ? `
+              <div class="location-progress">
+                <div class="location-progress-bar"><div class="location-progress-fill" style="width:${s.done/s.total*100}%"></div></div>
+                <div class="location-progress-text">${s.done}/${s.total}</div>
+              </div>
+            ` : `<div class="location-progress-text" style="margin-top:6px;font-size:12px;color:var(--text-muted)">No shots added yet</div>`}
+          </div>
+          <div class="location-arrow">›</div>
+        </div>
+      `;
+    }
   });
 
-  if (!LOCATIONS.some((l) => allShots(l).length > 0)) {
-    html += `<div class="empty-locations">Add reference photos to <code>photos/</code> folders and configure <code>shots.js</code></div>`;
+  if (locs.length === 0) {
+    html += `<div class="empty-locations">No locations yet. Tap + to add one.</div>`;
   }
 
   html += `</div>`;
@@ -650,7 +795,7 @@ function renderGroupDetail(loc, groupName) {
 
 // ─── Actions ─────────────────────────────────────────
 async function openLocation(id) {
-  currentLocation = LOCATIONS.find((l) => l.id === id);
+  currentLocation = getAllLocations().find((l) => l.id === id);
   if (currentLocation) {
     editMode = false; selectedShots.clear(); selectedGroupNames.clear(); currentGroup = null; feedStartShotId = null;
     renderShots(currentLocation);
@@ -853,7 +998,7 @@ function renameGroup(oldName) {
 }
 
 function restoreDeleted(locId) {
-  const loc = LOCATIONS.find((l) => l.id === locId);
+  const loc = getAllLocations().find((l) => l.id === locId);
   if (!loc) return;
   allShots(loc).forEach((s) => { delete hiddenShots[s.id]; });
   saveHidden();
@@ -861,7 +1006,7 @@ function restoreDeleted(locId) {
 }
 
 function resetLocation(locId) {
-  const loc = LOCATIONS.find((l) => l.id === locId);
+  const loc = getAllLocations().find((l) => l.id === locId);
   if (!loc) return;
   if (!confirm(`Reset all checkboxes for ${loc.name}?`)) return;
   allShots(loc).forEach((s) => { delete completedShots[s.id]; });
@@ -1042,7 +1187,7 @@ async function handleUpload(files) {
 window.addEventListener("popstate", () => {
   const hash = window.location.hash.replace("#", "");
   if (hash) {
-    const loc = LOCATIONS.find((l) => l.id === hash);
+    const loc = getAllLocations().find((l) => l.id === hash);
     if (loc) { currentLocation = loc; currentGroup = null; renderShots(loc); return; }
   }
   currentLocation = null; currentGroup = null; renderLocations();
@@ -1053,7 +1198,7 @@ async function initApp() {
   await loadAllState();
   const hash = window.location.hash.replace("#", "");
   if (hash) {
-    const loc = LOCATIONS.find((l) => l.id === hash);
+    const loc = getAllLocations().find((l) => l.id === hash);
     if (loc) { currentLocation = loc; renderShots(loc); return; }
   }
   renderLocations();
