@@ -346,17 +346,6 @@ function renderShots(loc) {
     html += renderFeed(visible, loc);
   }
 
-  const hiddenCount = allShots(loc).filter((s) => isHidden(s.id)).length;
-  if (visible.length > 0 || hiddenCount > 0) {
-    html += `<div class="reset-section">`;
-    if (visible.length > 0) {
-      html += `<button class="reset-btn" onclick="resetLocation('${loc.id}')">Reset all for ${loc.name}</button>`;
-    }
-    if (hiddenCount > 0) {
-      html += `<button class="reset-btn restore-btn" onclick="restoreDeleted('${loc.id}')">Restore ${hiddenCount} deleted shot${hiddenCount > 1 ? 's' : ''}</button>`;
-    }
-    html += `</div>`;
-  }
 
   app.innerHTML = html;
 
