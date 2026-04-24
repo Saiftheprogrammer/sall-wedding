@@ -36,7 +36,7 @@ const LOCATIONS = [
     id: "botanic-gardens",
     name: "Botanic Gardens",
     icon: "🌿",
-    description: "Bridal party portraits — ~30 min session",
+    description: "Bridal party portraits",
     folder: "photos/botanic-gardens",
     shots: [
       { id: "bg-1", description: "", notes: "", type: "photo", photo: "IMG_9638 2.WEBP", priority: "must-have" },
