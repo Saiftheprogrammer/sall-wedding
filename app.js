@@ -940,6 +940,80 @@ function triggerUpload() {
   input.click();
 }
 
+// Compress image before upload — reduces file size significantly on mobile
+function compressImage(file, maxWidth = 1600, quality = 0.8) {
+  return new Promise((resolve) => {
+    // If file is small enough already (<500KB), skip compression
+    if (file.size < 500000) { resolve(file); return; }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      let w = img.width;
+      let h = img.height;
+
+      if (w > maxWidth) {
+        h = Math.round(h * maxWidth / w);
+        w = maxWidth;
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        resolve(blob || file);
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // fallback to original
+    };
+    img.src = url;
+  });
+}
+
+async function uploadOneFile(file, locId, retries = 2) {
+  const shotId = `u-${locId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const filePath = `${locId}/${shotId}.jpg`;
+
+  const compressed = await compressImage(file);
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const { error } = await sb.storage.from("photos").upload(filePath, compressed, {
+        cacheControl: '3600',
+        contentType: 'image/jpeg',
+        upsert: false
+      });
+      if (error) {
+        if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+        console.error("Storage upload failed:", file.name, error.message);
+        return null;
+      }
+
+      const { error: dbError } = await sb.from("uploaded_photos").insert({
+        id: shotId,
+        location_id: locId,
+        file_path: filePath
+      });
+      if (dbError) {
+        console.error("DB insert failed:", file.name, dbError.message);
+        return null;
+      }
+
+      return { id: shotId, location_id: locId, file_path: filePath };
+    } catch (e) {
+      if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+      console.error("Upload exception:", file.name, e);
+      return null;
+    }
+  }
+  return null;
+}
+
 async function handleUpload(files) {
   if (!currentLocation || !files || files.length === 0) return;
   const locId = currentLocation.id;
@@ -956,41 +1030,15 @@ async function handleUpload(files) {
   toast.textContent = `Uploading 0/${total}...`;
   document.body.appendChild(toast);
 
-  // Upload one at a time to avoid rate limits
+  // Upload one at a time with compression and retry
   for (const file of fileList) {
-    const shotId = `u-${locId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const filePath = `${locId}/${shotId}.${ext}`;
+    toast.textContent = `Uploading ${done + 1}/${total}...`;
 
-    try {
-      const { error } = await sb.storage.from("photos").upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-      if (error) {
-        console.error("Storage upload failed:", file.name, error.message);
-        failed++;
-        continue;
-      }
-
-      const { error: dbError } = await sb.from("uploaded_photos").insert({
-        id: shotId,
-        location_id: locId,
-        file_path: filePath
-      });
-
-      if (dbError) {
-        console.error("DB insert failed:", file.name, dbError.message);
-        failed++;
-        continue;
-      }
-
-      uploadedShots[locId].push({ id: shotId, location_id: locId, file_path: filePath });
+    const result = await uploadOneFile(file, locId);
+    if (result) {
+      uploadedShots[locId].push(result);
       done++;
-      toast.textContent = `Uploading ${done}/${total}...`;
-    } catch (e) {
-      console.error("Upload exception:", file.name, e);
+    } else {
       failed++;
     }
   }
