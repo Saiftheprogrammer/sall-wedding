@@ -945,16 +945,21 @@ async function handleUpload(files) {
   const locId = currentLocation.id;
   if (!uploadedShots[locId]) uploadedShots[locId] = [];
 
-  // Show uploading indicator
-  const countEl = document.createElement("div");
-  countEl.className = "upload-toast";
-  countEl.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
-  document.body.appendChild(countEl);
+  const fileList = [...files];
+  const total = fileList.length;
+  let done = 0;
+  let failed = 0;
 
-  // Upload all files in parallel
-  const uploads = [...files].map(async (file, i) => {
-    const shotId = `upload-${locId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 10)}`;
-    const ext = file.name.split('.').pop() || 'jpg';
+  // Show uploading indicator
+  const toast = document.createElement("div");
+  toast.className = "upload-toast";
+  toast.textContent = `Uploading 0/${total}...`;
+  document.body.appendChild(toast);
+
+  // Upload one at a time to avoid rate limits
+  for (const file of fileList) {
+    const shotId = `u-${locId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const filePath = `${locId}/${shotId}.${ext}`;
 
     try {
@@ -962,27 +967,36 @@ async function handleUpload(files) {
         cacheControl: '3600',
         upsert: false
       });
-      if (error) { console.error("Upload failed:", file.name, error); return null; }
+
+      if (error) {
+        console.error("Storage upload failed:", file.name, error.message);
+        failed++;
+        continue;
+      }
 
       const { error: dbError } = await sb.from("uploaded_photos").insert({
         id: shotId,
         location_id: locId,
         file_path: filePath
       });
-      if (dbError) { console.error("DB insert failed:", dbError); return null; }
 
-      return { id: shotId, location_id: locId, file_path: filePath };
+      if (dbError) {
+        console.error("DB insert failed:", file.name, dbError.message);
+        failed++;
+        continue;
+      }
+
+      uploadedShots[locId].push({ id: shotId, location_id: locId, file_path: filePath });
+      done++;
+      toast.textContent = `Uploading ${done}/${total}...`;
     } catch (e) {
-      console.error("Upload error:", file.name, e);
-      return null;
+      console.error("Upload exception:", file.name, e);
+      failed++;
     }
-  });
+  }
 
-  const results = await Promise.all(uploads);
-  const successful = results.filter(Boolean);
-  successful.forEach((shot) => uploadedShots[locId].push(shot));
-
-  countEl.remove();
+  toast.textContent = failed > 0 ? `Done: ${done} uploaded, ${failed} failed` : `${done} photo${done > 1 ? 's' : ''} uploaded`;
+  setTimeout(() => toast.remove(), 2000);
   if (currentLocation) renderShots(currentLocation);
 }
 
