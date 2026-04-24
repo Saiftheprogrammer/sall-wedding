@@ -887,6 +887,16 @@ body {
   font-weight: 600;
 }
 
+/* ── Loading ── */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
 /* ── Empty state ── */
 .empty-shots {
   text-align: center;
