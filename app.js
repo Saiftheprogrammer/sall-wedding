@@ -236,7 +236,8 @@ function locationStats(loc) {
 }
 
 function getShotIndex(shot, loc) {
-  return allShots(loc).indexOf(shot) + 1;
+  const idx = allShots(loc).findIndex((s) => s.id === shot.id);
+  return idx + 1;
 }
 
 function totalStats() {
