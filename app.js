@@ -943,28 +943,47 @@ function triggerUpload() {
 async function handleUpload(files) {
   if (!currentLocation || !files || files.length === 0) return;
   const locId = currentLocation.id;
+  if (!uploadedShots[locId]) uploadedShots[locId] = [];
 
-  for (const file of files) {
-    const shotId = `upload-${locId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const filePath = `${locId}/${shotId}`;
+  // Show uploading indicator
+  const countEl = document.createElement("div");
+  countEl.className = "upload-toast";
+  countEl.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
+  document.body.appendChild(countEl);
 
-    // Upload to Supabase Storage
-    const { error } = await sb.storage.from("photos").upload(filePath, file);
-    if (error) { console.error("Upload failed:", error); continue; }
+  // Upload all files in parallel
+  const uploads = [...files].map(async (file, i) => {
+    const shotId = `upload-${locId}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 10)}`;
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${locId}/${shotId}.${ext}`;
 
-    // Save metadata to DB
-    await sb.from("uploaded_photos").insert({
-      id: shotId,
-      location_id: locId,
-      file_path: filePath
-    });
+    try {
+      const { error } = await sb.storage.from("photos").upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+      if (error) { console.error("Upload failed:", file.name, error); return null; }
 
-    // Update local state
-    if (!uploadedShots[locId]) uploadedShots[locId] = [];
-    uploadedShots[locId].push({ id: shotId, location_id: locId, file_path: filePath });
-  }
+      const { error: dbError } = await sb.from("uploaded_photos").insert({
+        id: shotId,
+        location_id: locId,
+        file_path: filePath
+      });
+      if (dbError) { console.error("DB insert failed:", dbError); return null; }
 
-  renderShots(currentLocation);
+      return { id: shotId, location_id: locId, file_path: filePath };
+    } catch (e) {
+      console.error("Upload error:", file.name, e);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(uploads);
+  const successful = results.filter(Boolean);
+  successful.forEach((shot) => uploadedShots[locId].push(shot));
+
+  countEl.remove();
+  if (currentLocation) renderShots(currentLocation);
 }
 
 // ─── Browser navigation ─────────────────────────────

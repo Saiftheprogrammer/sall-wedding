@@ -948,6 +948,22 @@ body {
   min-height: 20px;
 }
 
+/* ── Upload toast ── */
+.upload-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #000;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 20px;
+  z-index: 300;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
 /* ── Loading ── */
 .loading-screen {
   display: flex;
