@@ -92,9 +92,9 @@ async function loadAllState() {
   hiddenShots = h || {};
   descOverrides = d || {};
   orderOverrides = o || {};
-  customLocations = cl || [];
+  customLocations = Array.isArray(cl) ? cl : [];
   locationOverrides = lo || {};
-  locationOrder = locOrd || [];
+  locationOrder = Array.isArray(locOrd) ? locOrd : [];
 
   // Load uploaded photos from DB
   const { data: uploads } = await sb.from("uploaded_photos").select("*");
